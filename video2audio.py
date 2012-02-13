@@ -3,13 +3,14 @@
 import sys, gst, inspect
 import gobject; gobject.threads_init()
 
-filetypes = [("video/quicktime,variant=iso", "mp4"),
-             ("video/webm", "webm"),
-             ("video/x-matroska", "mkv"),
-             ("video/x-msvideo", "avi"),
-             ("application/ogg", "ogg")]
+filetypes = [("video/quicktime,variant=iso", "m4a"),
+             ("video/x-matroska", "mka"),
+             ("video/mpeg,mpegversion=2", "mp3"),
+             ("application/ogg", "ogg"),
+             ("video/x-msvideo", "avi")]
 
 def muxer_callback(muxer, pad):
+	print "muxer_callback: muxer created pad", pad
 	out_name = sys.argv[1]
 	if out_name.endswith("." + muxer.ext):
 		out_name, _, _ = out_name.rpartition(".")
@@ -23,10 +24,11 @@ def muxer_callback(muxer, pad):
 	converter.set_state(gst.STATE_PLAYING)
 
 def demuxer_callback(demuxer, pad):
+	print "demuxer_callback: demuxer created pad", pad
 	caps = pad.get_caps()
 	if not str(caps).startswith("audio"):
 		return
-	
+	print "demuxer_callback: using pad", pad, "as audio"
 	muxer = find_mux(caps)
 	assert muxer
 	muxer.connect("pad-added", muxer_callback)
@@ -34,14 +36,21 @@ def demuxer_callback(demuxer, pad):
 	demuxer.link(muxer)
 
 def find_mux(caps):
+	print str(caps)
 	muxers = [f for f in gst.registry_get_default().get_feature_list(gst.ElementFactory)]
 	muxers = filter(lambda f: f.get_klass() == "Codec/Muxer", muxers)
-	muxers = filter(lambda f: "not recommended" not in f.get_longname(), muxers)
+	for m in muxers:
+		print m
+	#muxers = filter(lambda f: "not recommended" not in f.get_longname(), muxers)
 	muxers = filter(lambda f: f.can_sink_caps(caps), muxers)
+	print muxers
 
+	print "-----"
 	for muxer in muxers:
-		for caps_string, ext in filetypes:
+#		print str(muxer)
+		for i, (caps_string, ext) in enumerate(filetypes):
 			if muxer.can_src_caps(gst.caps_from_string(caps_string)):
+				print i
 				muxer = muxer.create()
 				muxer.ext = ext
 				return muxer
@@ -55,6 +64,7 @@ def find_demux(caps):
 	return None
 
 def typefind_callback(element, probability, caps):
+	print "typefind_callback found type", caps, "with probability", probability
 	demuxer = find_demux(caps)
 	if not demuxer:
 		raise Exception("unknown input type")
