@@ -4,9 +4,9 @@ import sys, gst, inspect
 import gobject; gobject.threads_init()
 
 filetypes = [("video/quicktime,variant=iso", "m4a"),
-             ("video/x-matroska", "mka"),
              ("video/mpeg,mpegversion=2", "mp3"),
              ("application/ogg", "ogg"),
+             ("video/x-matroska", "mka"),
              ("video/x-msvideo", "avi")]
 
 def muxer_callback(muxer, pad):
